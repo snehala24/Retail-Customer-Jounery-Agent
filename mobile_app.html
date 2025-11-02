@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Sales Agent - Mobile</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f7;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .mobile-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            max-width: 400px;
+            margin: 0 auto;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .header .subtitle {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 4px;
+        }
+        
+        .status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            font-size: 12px;
+            color: #6c757d;
+        }
+        
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #f8f9fa;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+        
+        .message {
+            margin-bottom: 16px;
+            display: flex;
+            align-items: flex-start;
+        }
+        
+        .message.user {
+            justify-content: flex-end;
+        }
+        
+        .message-content {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 20px;
+            word-wrap: break-word;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .message.agent .message-content {
+            background: white;
+            border: 1px solid #e5e7eb;
+            margin-right: 40px;
+            position: relative;
+        }
+        
+        .message.agent .message-content::before {
+            content: '';
+            position: absolute;
+            left: -8px;
+            top: 12px;
+            width: 0;
+            height: 0;
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+            border-right: 8px solid white;
+        }
+        
+        .message.user .message-content {
+            background: #007AFF;
+            color: white;
+            margin-left: 40px;
+        }
+        
+        .quick-actions {
+            padding: 12px 20px;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+        }
+        
+        .quick-action {
+            background: #f1f3f4;
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 12px;
+            color: #1f2937;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .quick-action:hover {
+            background: #e5e7eb;
+        }
+        
+        .chat-input {
+            padding: 16px 20px;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .chat-input input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 25px;
+            outline: none;
+            font-size: 14px;
+            background: #f8f9fa;
+        }
+        
+        .chat-input input:focus {
+            background: white;
+            border-color: #007AFF;
+        }
+        
+        .send-button {
+            width: 44px;
+            height: 44px;
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 22px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+        
+        .send-button:hover {
+            background: #0056b3;
+        }
+        
+        .send-button:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+        }
+        
+        .typing-indicator {
+            display: none;
+            color: #6b7280;
+            font-style: italic;
+            font-size: 12px;
+            text-align: center;
+            padding: 8px;
+        }
+        
+        .product-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 8px 0;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .product-name {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+        
+        .product-price {
+            color: #007AFF;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .product-reason {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+        
+        .customer-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        
+        .channel-indicator {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        
+        .floating-action {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 28px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,122,255,0.3);
+            font-size: 20px;
+            z-index: 1000;
+        }
+        
+        .voice-input {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 20px;
+            border-top: 1px solid #e5e7eb;
+            display: none;
+        }
+        
+        .voice-button {
+            width: 100%;
+            padding: 16px;
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .voice-visualizer {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            margin: 16px 0;
+        }
+        
+        .voice-bar {
+            width: 4px;
+            background: #007AFF;
+            border-radius: 2px;
+            animation: voicePulse 0.5s ease-in-out infinite alternate;
+        }
+        
+        @keyframes voicePulse {
+            0% { height: 8px; }
+            100% { height: 24px; }
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            background: #007AFF;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 1000;
+            transform: translateY(-100px);
+            transition: transform 0.3s ease;
+        }
+        
+        .notification.show {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-container">
+        <div class="status-bar">
+            <span>9:41</span>
+            <span>AI Sales Agent</span>
+            <span>100%</span>
+        </div>
+        
+        <div class="header">
+            <div class="channel-indicator" id="channel-indicator">📱 Mobile</div>
+            <h1>AI Sales Assistant</h1>
+            <div class="subtitle">Your personal shopping companion</div>
+            <div class="customer-info" id="customer-info">Guest</div>
+        </div>
+        
+        <div class="chat-container">
+            <div class="chat-messages" id="chat-messages">
+                <div class="message agent">
+                    <div class="message-content">
+                        Hi! I'm your AI shopping assistant. I can help you find products, check inventory, and make purchases. What can I help you with today?
+                    </div>
+                </div>
+            </div>
+            
+            <div class="typing-indicator" id="typing-indicator">
+                Assistant is typing...
+            </div>
+            
+            <div class="quick-actions" id="quick-actions">
+                <button class="quick-action" onclick="sendQuickMessage('Show me products')">Products</button>
+                <button class="quick-action" onclick="sendQuickMessage('What are your recommendations?')">Recommendations</button>
+                <button class="quick-action" onclick="sendQuickMessage('Check my cart')">My Cart</button>
+                <button class="quick-action" onclick="sendQuickMessage('Track my order')">Track Order</button>
+            </div>
+            
+            <div class="chat-input">
+                <input type="text" id="message-input" placeholder="Type your message..." disabled>
+                <button class="send-button" onclick="sendMessage()" disabled id="send-button">
+                    ➤
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <button class="floating-action" onclick="toggleVoiceInput()" id="voice-button">
+        🎤
+    </button>
+    
+    <div class="voice-input" id="voice-input">
+        <div class="voice-visualizer" id="voice-visualizer">
+            <div class="voice-bar"></div>
+            <div class="voice-bar"></div>
+            <div class="voice-bar"></div>
+            <div class="voice-bar"></div>
+            <div class="voice-bar"></div>
+        </div>
+        <button class="voice-button" onclick="startVoiceInput()">
+            Tap to speak
+        </button>
+    </div>
+    
+    <div class="notification" id="notification">
+        Message received
+    </div>
+
+    <script>
+        let currentCustomer = null;
+        let currentSession = null;
+        let isVoiceActive = false;
+        let recognition = null;
+
+        // Initialize speech recognition
+        if ('webkitSpeechRecognition' in window) {
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+            
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('message-input').value = transcript;
+                sendMessage();
+            };
+            
+            recognition.onerror = function(event) {
+                console.error('Speech recognition error:', event.error);
+                stopVoiceInput();
+            };
+        }
+
+        // Load customer from URL parameter or default
+        function loadCustomer() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const customerId = urlParams.get('customer') || 'customer_001';
+            
+            // Mock customer data for demo
+            const customers = {
+                'customer_001': { id: 'customer_001', name: 'Sarah Johnson', tier: 'platinum' },
+                'customer_002': { id: 'customer_002', name: 'Mike Chen', tier: 'gold' },
+                'customer_003': { id: 'customer_003', name: 'Emily Rodriguez', tier: 'silver' }
+            };
+            
+            currentCustomer = customers[customerId] || customers['customer_001'];
+            document.getElementById('customer-info').textContent = currentCustomer.name;
+            
+            // Enable input
+            document.getElementById('message-input').disabled = false;
+            document.getElementById('send-button').disabled = false;
+            
+            // Start conversation
+            startConversation();
+        }
+
+        // Start conversation
+        async function startConversation() {
+            try {
+                const response = await fetch('/api/start-conversation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        customer_id: currentCustomer.id,
+                        channel: 'mobile'
+                    })
+                });
+                
+                const result = await response.json();
+                currentSession = result.session_id;
+                
+                // Add agent message
+                addMessage('agent', result.message);
+                
+                // Show suggested actions if available
+                if (result.suggested_actions) {
+                    showQuickActions(result.suggested_actions);
+                }
+            } catch (error) {
+                console.error('Error starting conversation:', error);
+                addMessage('agent', 'Welcome! I\'m your AI shopping assistant. How can I help you today?');
+            }
+        }
+
+        // Send message
+        async function sendMessage() {
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            
+            if (!message || !currentSession) return;
+            
+            // Add user message
+            addMessage('user', message);
+            input.value = '';
+            
+            // Show typing indicator
+            showTypingIndicator();
+            
+            try {
+                const response = await fetch('/api/send-message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        session_id: currentSession,
+                        message: message,
+                        customer_id: currentCustomer.id,
+                        channel: 'mobile'
+                    })
+                });
+                
+                const result = await response.json();
+                hideTypingIndicator();
+                
+                if (result.error) {
+                    addMessage('agent', `Error: ${result.error}`);
+                } else {
+                    handleAgentResponse(result);
+                }
+            } catch (error) {
+                hideTypingIndicator();
+                addMessage('agent', 'Sorry, I encountered an error. Please try again.');
+                console.error('Error sending message:', error);
+            }
+        }
+
+        // Send quick message
+        function sendQuickMessage(message) {
+            document.getElementById('message-input').value = message;
+            sendMessage();
+        }
+
+        // Handle agent response
+        function handleAgentResponse(result) {
+            if (result.message) {
+                addMessage('agent', result.message);
+            }
+            
+            if (result.recommendations) {
+                showRecommendations(result.recommendations);
+            }
+            
+            if (result.suggested_actions) {
+                showQuickActions(result.suggested_actions);
+            }
+        }
+
+        // Add message to chat
+        function addMessage(sender, content) {
+            const messagesContainer = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+            
+            messageDiv.appendChild(contentDiv);
+            messagesContainer.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Show notification for agent messages
+            if (sender === 'agent') {
+                showNotification('New message from assistant');
+            }
+        }
+
+        // Show recommendations
+        function showRecommendations(recommendations) {
+            const messagesContainer = document.getElementById('chat-messages');
+            
+            recommendations.forEach(rec => {
+                const productDiv = document.createElement('div');
+                productDiv.className = 'product-card';
+                productDiv.innerHTML = `
+                    <div class="product-name">${rec.product.name}</div>
+                    <div class="product-price">$${rec.product.price}</div>
+                    <div class="product-reason">${rec.reason}</div>
+                `;
+                messagesContainer.appendChild(productDiv);
+            });
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Show quick actions
+        function showQuickActions(actions) {
+            const quickActionsContainer = document.getElementById('quick-actions');
+            quickActionsContainer.innerHTML = '';
+            
+            actions.forEach(action => {
+                const button = document.createElement('button');
+                button.className = 'quick-action';
+                button.textContent = action;
+                button.onclick = () => sendQuickMessage(action);
+                quickActionsContainer.appendChild(button);
+            });
+        }
+
+        // Show typing indicator
+        function showTypingIndicator() {
+            document.getElementById('typing-indicator').style.display = 'block';
+        }
+
+        // Hide typing indicator
+        function hideTypingIndicator() {
+            document.getElementById('typing-indicator').style.display = 'none';
+        }
+
+        // Toggle voice input
+        function toggleVoiceInput() {
+            const voiceInput = document.getElementById('voice-input');
+            const voiceButton = document.getElementById('voice-button');
+            
+            if (voiceInput.style.display === 'none' || voiceInput.style.display === '') {
+                voiceInput.style.display = 'block';
+                voiceButton.textContent = '✕';
+            } else {
+                stopVoiceInput();
+            }
+        }
+
+        // Start voice input
+        function startVoiceInput() {
+            if (recognition) {
+                recognition.start();
+                isVoiceActive = true;
+                document.querySelector('.voice-button').textContent = 'Listening...';
+            } else {
+                alert('Speech recognition not supported in this browser');
+            }
+        }
+
+        // Stop voice input
+        function stopVoiceInput() {
+            if (recognition && isVoiceActive) {
+                recognition.stop();
+                isVoiceActive = false;
+            }
+            
+            document.getElementById('voice-input').style.display = 'none';
+            document.getElementById('voice-button').textContent = '🎤';
+        }
+
+        // Show notification
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Handle Enter key
+        document.getElementById('message-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Simulate channel switching
+        function simulateChannelSwitch() {
+            const channels = ['📱 Mobile', '💬 WhatsApp', '🖥️ Web', '🏪 In-Store'];
+            let currentIndex = 0;
+            
+            setInterval(() => {
+                currentIndex = (currentIndex + 1) % channels.length;
+                document.getElementById('channel-indicator').textContent = channels[currentIndex];
+                
+                if (currentIndex === 1) { // WhatsApp
+                    showNotification('Switched to WhatsApp');
+                } else if (currentIndex === 3) { // In-Store
+                    showNotification('Switched to In-Store Kiosk');
+                }
+            }, 30000); // Switch every 30 seconds for demo
+        }
+
+        // Load customer and start demo
+        loadCustomer();
+        simulateChannelSwitch();
+    </script>
+</body>
+</html>
