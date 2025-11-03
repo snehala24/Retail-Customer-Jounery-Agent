@@ -4,6 +4,7 @@ from models import AgentTask
 from data.mock_services import MockPaymentService, MockLoyaltyService
 from models import PaymentMethod, CustomerTier
 import random
+import asyncio
 from datetime import datetime
 
 class PaymentAgent(BaseAgent):
@@ -31,9 +32,10 @@ class PaymentAgent(BaseAgent):
             return {"error": f"Unknown action: {action}"}
     
     async def _process_payment(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Process customer payment"""
+        """Process customer payment with real-time support"""
         amount = task_data.get("amount", 0)
-        payment_method = PaymentMethod(task_data.get("payment_method", "credit_card"))
+        payment_method_str = task_data.get("payment_method", "credit_card")
+        payment_method = PaymentMethod(payment_method_str)
         customer = task_data.get("customer", {})
         cart_items = task_data.get("cart", [])
         
@@ -47,15 +49,15 @@ class PaymentAgent(BaseAgent):
         final_amount = loyalty_calculation["final_amount"]
         points_used = loyalty_calculation["points_used"]
         
-        # Process payment
-        payment_result = self.payment_service.process_payment(
-            final_amount, payment_method, customer.get("id", "")
+        # Real-time payment processing with Indian payment methods
+        payment_result = await self._process_realtime_payment(
+            final_amount, payment_method, customer.get("id", ""), customer
         )
         
         if payment_result["success"]:
             # Calculate new loyalty points
             new_points = self.loyalty_service.calculate_loyalty_points(
-                amount, customer.get("tier", "bronze")
+                final_amount, customer.get("tier", "bronze")
             )
             
             return {
@@ -63,19 +65,146 @@ class PaymentAgent(BaseAgent):
                 "transaction_id": payment_result["transaction_id"],
                 "amount_charged": final_amount,
                 "original_amount": amount,
-                "payment_method": payment_method,
+                "payment_method": payment_method.value,
+                "payment_method_display": self._get_payment_method_description(payment_method),
                 "loyalty_points_earned": new_points,
                 "loyalty_points_used": points_used,
                 "discount_applied": amount - final_amount,
                 "timestamp": payment_result["timestamp"],
-                "message": self._generate_payment_success_message(customer, final_amount, new_points)
+                "upi_reference": payment_result.get("upi_reference"),
+                "gateway_response": payment_result.get("gateway_response", {}),
+                "message": self._generate_payment_success_message(customer, final_amount, new_points, payment_method)
             }
         else:
             return {
                 "success": False,
                 "error": payment_result["error"],
                 "error_code": payment_result.get("error_code"),
-                "message": self._generate_payment_failure_message(payment_result["error"])
+                "retry_available": payment_result.get("retry_available", True),
+                "message": self._generate_payment_failure_message(payment_result["error"], payment_method)
+            }
+    
+    async def _process_realtime_payment(
+        self, 
+        amount: float, 
+        payment_method: PaymentMethod, 
+        customer_id: str,
+        customer: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Process payment in real-time with proper gateway integration simulation"""
+        import random
+        import time
+        
+        # Simulate real-time processing delay
+        await asyncio.sleep(0.5)  # Simulate network latency
+        
+        # UPI-specific processing
+        if payment_method == PaymentMethod.UPI:
+            return await self._process_upi_payment(amount, customer_id, customer)
+        elif payment_method == PaymentMethod.COD:
+            return await self._process_cod_payment(amount, customer_id)
+        elif payment_method == PaymentMethod.WALLET:
+            return await self._process_wallet_payment(amount, customer_id, customer)
+        else:
+            # Card/Net Banking processing
+            return self.payment_service.process_payment(amount, payment_method, customer_id)
+    
+    async def _process_upi_payment(
+        self, 
+        amount: float, 
+        customer_id: str,
+        customer: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Process UPI payment with real-time simulation"""
+        import random
+        
+        # Simulate UPI gateway interaction
+        success_rate = 0.92  # 92% success rate for UPI
+        
+        if random.random() < success_rate:
+            # Generate UPI transaction details
+            upi_ref = f"UPI{random.randint(100000000, 999999999)}"
+            gateway = random.choice(["PhonePe", "Google Pay", "Paytm", "BHIM UPI"])
+            
+            return {
+                "success": True,
+                "transaction_id": f"TXN_UPI_{random.randint(100000, 999999)}",
+                "amount": amount,
+                "payment_method": PaymentMethod.UPI.value,
+                "upi_reference": upi_ref,
+                "gateway": gateway,
+                "gateway_response": {
+                    "status": "success",
+                    "message": "Payment successful via UPI",
+                    "approval_code": f"APP{random.randint(10000, 99999)}"
+                },
+                "timestamp": datetime.now().isoformat()
+            }
+        else:
+            # Simulate UPI failure scenarios
+            failure_reasons = [
+                "Insufficient funds in bank account",
+                "UPI PIN incorrect",
+                "Transaction declined by bank",
+                "Network timeout - please try again"
+            ]
+            error_reason = random.choice(failure_reasons)
+            
+            return {
+                "success": False,
+                "error": error_reason,
+                "error_code": "UPI_PAYMENT_FAILED",
+                "retry_available": True,
+                "timestamp": datetime.now().isoformat()
+            }
+    
+    async def _process_cod_payment(self, amount: float, customer_id: str) -> Dict[str, Any]:
+        """Process Cash on Delivery payment"""
+        return {
+            "success": True,
+            "transaction_id": f"TXN_COD_{random.randint(100000, 999999)}",
+            "amount": amount,
+            "payment_method": PaymentMethod.COD.value,
+            "gateway_response": {
+                "status": "confirmed",
+                "message": "COD order confirmed. Payment will be collected on delivery."
+            },
+            "timestamp": datetime.now().isoformat(),
+            "cod_instructions": "Please keep exact change ready. Cash will be collected on delivery."
+        }
+    
+    async def _process_wallet_payment(
+        self, 
+        amount: float, 
+        customer_id: str,
+        customer: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Process wallet payment (Paytm, PhonePe wallet)"""
+        import random
+        
+        wallet_type = random.choice(["Paytm", "PhonePe", "Amazon Pay"])
+        success_rate = 0.95
+        
+        if random.random() < success_rate:
+            return {
+                "success": True,
+                "transaction_id": f"TXN_WLT_{random.randint(100000, 999999)}",
+                "amount": amount,
+                "payment_method": PaymentMethod.WALLET.value,
+                "wallet_type": wallet_type,
+                "gateway_response": {
+                    "status": "success",
+                    "message": f"Payment successful via {wallet_type} wallet"
+                },
+                "timestamp": datetime.now().isoformat()
+            }
+        else:
+            return {
+                "success": False,
+                "error": "Insufficient wallet balance",
+                "error_code": "WALLET_INSUFFICIENT_BALANCE",
+                "retry_available": True,
+                "timestamp": datetime.now().isoformat()
             }
     
     async def _calculate_total(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -93,9 +222,9 @@ class PaymentAgent(BaseAgent):
         # Calculate loyalty benefits
         loyalty_calculation = await self._calculate_loyalty_benefits(subtotal, customer, cart_items)
         
-        # Calculate tax (mock 8.5% tax rate)
+        # Calculate tax (mock 8.5% tax rate for India - GST)
         taxable_amount = loyalty_calculation["final_amount"] - promotion_discount["discount_amount"]
-        tax_amount = taxable_amount * 0.085
+        tax_amount = taxable_amount * 0.18  # 18% GST in India
         
         # Final total
         final_total = taxable_amount + tax_amount
@@ -166,7 +295,7 @@ class PaymentAgent(BaseAgent):
                 "refund_id": refund_result["refund_id"],
                 "refund_amount": refund_amount,
                 "timestamp": refund_result["timestamp"],
-                "message": f"Refund of ${refund_amount:.2f} has been processed successfully."
+                "message": f"Refund of ₹{refund_amount:,.2f} has been processed successfully."
             }
         else:
             return {
@@ -233,7 +362,7 @@ class PaymentAgent(BaseAgent):
         
         # Check minimum amount requirement
         if promotion.get("min_amount") and amount < promotion["min_amount"]:
-            return {"valid": False, "error": f"Minimum purchase of ${promotion['min_amount']} required"}
+            return {"valid": False, "error": f"Minimum purchase of ₹{promotion['min_amount']:,.2f} required"}
         
         # Check tier requirement
         if promotion.get("tier_required") and customer.get("tier") != promotion["tier_required"]:
@@ -250,12 +379,25 @@ class PaymentAgent(BaseAgent):
             "description": f"{promotion['discount']*100}% off your purchase"
         }
     
-    def _generate_payment_success_message(self, customer: Dict[str, Any], amount: float, points_earned: int) -> str:
+    def _generate_payment_success_message(
+        self, 
+        customer: Dict[str, Any], 
+        amount: float, 
+        points_earned: int,
+        payment_method: PaymentMethod
+    ) -> str:
         """Generate success message for payment"""
         name = customer.get("name", "Customer").split()[0]
         tier = customer.get("tier", "bronze").title()
         
-        message = f"Payment successful! Your order for ${amount:.2f} has been processed."
+        payment_method_name = self._get_payment_method_description(payment_method)
+        
+        message = f"Payment successful via {payment_method_name}! Your order for ₹{amount:,.2f} has been processed."
+        
+        if payment_method == PaymentMethod.UPI:
+            message += " Your UPI payment has been confirmed."
+        elif payment_method == PaymentMethod.COD:
+            message += " Your COD order has been confirmed. Cash will be collected on delivery."
         
         if points_earned > 0:
             message += f" You've earned {points_earned} loyalty points as a {tier} member."
@@ -265,41 +407,52 @@ class PaymentAgent(BaseAgent):
         
         return message
     
-    def _generate_payment_failure_message(self, error: str) -> str:
+    def _generate_payment_failure_message(self, error: str, payment_method: PaymentMethod) -> str:
         """Generate failure message for payment"""
+        payment_method_name = self._get_payment_method_description(payment_method)
+        
         if "declined" in error.lower():
-            return "Your payment was declined. Please check your payment information or try a different payment method."
+            return f"Your {payment_method_name} payment was declined. Please check your payment information or try a different payment method."
         elif "insufficient" in error.lower():
-            return "Insufficient funds. Please try a different payment method or contact your bank."
+            if payment_method == PaymentMethod.UPI:
+                return "Insufficient funds in your bank account. Please check your account balance or try a different payment method."
+            elif payment_method == PaymentMethod.WALLET:
+                return "Insufficient wallet balance. Please recharge your wallet or use a different payment method."
+            else:
+                return "Insufficient funds. Please try a different payment method or contact your bank."
+        elif "pin" in error.lower() or "incorrect" in error.lower():
+            return f"Authentication failed. Please check your {payment_method_name} PIN or credentials and try again."
         else:
-            return "We're having trouble processing your payment. Please try again or contact customer service."
+            return f"We're having trouble processing your {payment_method_name} payment. Please try again or contact customer service."
     
     def _get_payment_method_description(self, method: PaymentMethod) -> str:
-        """Get human-readable payment method description"""
+        """Get human-readable payment method description (India)"""
         descriptions = {
             PaymentMethod.CREDIT_CARD: "Credit Card",
             PaymentMethod.DEBIT_CARD: "Debit Card", 
-            PaymentMethod.UPI: "UPI Payment",
+            PaymentMethod.UPI: "UPI (Google Pay, PhonePe, Paytm)",
+            PaymentMethod.NET_BANKING: "Net Banking",
+            PaymentMethod.WALLET: "Digital Wallet (Paytm, PhonePe)",
+            PaymentMethod.COD: "Cash on Delivery (COD)",
             PaymentMethod.GIFT_CARD: "Gift Card",
-            PaymentMethod.CASH: "Cash",
             PaymentMethod.LOYALTY_POINTS: "Loyalty Points"
         }
         return descriptions.get(method, method.value.replace("_", " ").title())
     
     def _calculate_shipping_cost(self, cart_items: List[Dict[str, Any]], customer_location: str) -> float:
-        """Calculate shipping cost based on items and location"""
+        """Calculate shipping cost based on items and location (India - in rupees)"""
         total_weight = sum(item.get("weight", 1) * item.get("quantity", 1) for item in cart_items)
         total_value = sum(item.get("price", 0) * item.get("quantity", 1) for item in cart_items)
         
-        # Free shipping over $100
-        if total_value >= 100:
+        # Free shipping over ₹500 in India
+        if total_value >= 500:
             return 0.0
         
-        # Base shipping cost
-        base_cost = 9.99
+        # Base shipping cost in rupees
+        base_cost = 99.0
         
-        # Add weight-based surcharge
-        if total_weight > 10:
-            base_cost += (total_weight - 10) * 2.0
+        # Add weight-based surcharge (₹20 per kg over 5kg)
+        if total_weight > 5:
+            base_cost += (total_weight - 5) * 20.0
         
         return base_cost

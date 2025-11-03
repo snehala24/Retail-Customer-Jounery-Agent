@@ -393,7 +393,7 @@ class PostPurchaseAgent(BaseAgent):
     def _generate_return_message(self, customer: Dict[str, Any], refund_amount: float, return_id: str) -> str:
         """Generate return confirmation message"""
         name = customer.get("name", "Customer").split()[0]
-        return f"I've processed your return request, {name}. Return ID: {return_id}. You'll receive a refund of ${refund_amount:.2f} within 3-5 business days. A prepaid return label has been generated for your convenience."
+        return f"I've processed your return request, {name}. Return ID: {return_id}. You'll receive a refund of ₹{refund_amount:,.2f} within 3-5 business days. A prepaid return label has been generated for your convenience."
     
     def _generate_exchange_message(self, customer: Dict[str, Any], exchange_result: Dict[str, Any]) -> str:
         """Generate exchange confirmation message"""
@@ -402,9 +402,9 @@ class PostPurchaseAgent(BaseAgent):
         price_diff = exchange_result["price_difference"]
         
         if price_diff > 0:
-            return f"Your exchange has been processed, {name}. Exchange ID: {exchange_id}. You'll be charged an additional ${price_diff:.2f} for the difference. Your new items will be shipped once we receive your return."
+            return f"Your exchange has been processed, {name}. Exchange ID: {exchange_id}. You'll be charged an additional ₹{price_diff:,.2f} for the difference. Your new items will be shipped once we receive your return."
         elif price_diff < 0:
-            return f"Your exchange has been processed, {name}. Exchange ID: {exchange_id}. You'll receive a refund of ${abs(price_diff):.2f} for the difference. Your new items will be shipped once we receive your return."
+            return f"Your exchange has been processed, {name}. Exchange ID: {exchange_id}. You'll receive a refund of ₹{abs(price_diff):,.2f} for the difference. Your new items will be shipped once we receive your return."
         else:
             return f"Your exchange has been processed, {name}. Exchange ID: {exchange_id}. No price difference - it's an even exchange. Your new items will be shipped once we receive your return."
     

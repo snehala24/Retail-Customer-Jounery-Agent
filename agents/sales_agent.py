@@ -9,9 +9,11 @@ from agents.loyalty_agent import LoyaltyAgent
 from agents.post_purchase_agent import PostPurchaseAgent
 from data.synthetic_customers import CUSTOMERS
 from data.mock_services import MockProductService
+from utils.gemini_client import get_gemini_client
 import asyncio
 import uuid
 from datetime import datetime
+import os
 
 class SalesAgent(BaseAgent):
     def __init__(self):
@@ -26,6 +28,21 @@ class SalesAgent(BaseAgent):
         }
         self.active_sessions: Dict[str, ConversationSession] = {}
         self.customer_database = {c.id: c for c in CUSTOMERS}
+        # Initialize Gemini client if API key is available
+        self.use_gemini = bool(os.getenv("GEMINI_API_KEY"))
+        if self.use_gemini:
+            try:
+                self.gemini_client = get_gemini_client()
+                print("✓ Gemini AI enabled - Enhanced conversational intelligence active")
+            except Exception as e:
+                print(f"⚠ Warning: Could not initialize Gemini client: {e}")
+                print("  System will use rule-based fallback logic")
+                self.use_gemini = False
+                self.gemini_client = None
+        else:
+            print("ℹ Gemini AI not configured - Using rule-based conversation logic")
+            print("  Set GEMINI_API_KEY environment variable to enable Gemini AI")
+            self.gemini_client = None
     
     async def process_task(self, task: AgentTask) -> Dict[str, Any]:
         """Main sales agent task processing"""
@@ -237,20 +254,30 @@ class SalesAgent(BaseAgent):
         return self._get_indian_suggested_actions(customer)
     
     async def _analyze_intent(self, message: str, context: Dict[str, Any]) -> str:
-        """Analyze customer message intent"""
+        """Analyze customer message intent using Gemini or fallback"""
+        if self.use_gemini and self.gemini_client:
+            try:
+                intent_result = await self.gemini_client.analyze_intent(message, context)
+                return intent_result.get("intent", "general_inquiry")
+            except Exception as e:
+                print(f"Gemini intent analysis error: {e}")
+                # Fall through to fallback
+        
+        # Fallback intent analysis
         message_lower = message.lower()
         
-        # Simple intent analysis (in production, this would use NLP/ML)
-        if any(word in message_lower for word in ["recommend", "suggest", "what should", "help me find"]):
+        if any(word in message_lower for word in ["recommend", "suggest", "what should", "help me find", "show me"]):
             return "recommendation"
-        elif any(word in message_lower for word in ["buy", "purchase", "order", "checkout"]):
+        elif any(word in message_lower for word in ["buy", "purchase", "order", "checkout", "add to cart"]):
             return "purchase"
-        elif any(word in message_lower for word in ["price", "cost", "how much"]):
+        elif any(word in message_lower for word in ["price", "cost", "how much", "rupee", "₹"]):
             return "pricing"
-        elif any(word in message_lower for word in ["stock", "available", "inventory"]):
+        elif any(word in message_lower for word in ["stock", "available", "inventory", "in stock"]):
             return "inventory"
-        elif any(word in message_lower for word in ["return", "exchange", "refund"]):
+        elif any(word in message_lower for word in ["return", "exchange", "refund", "track order"]):
             return "post_purchase"
+        elif any(word in message_lower for word in ["upi", "payment", "pay", "cod", "wallet", "credit card"]):
+            return "payment"
         else:
             return "general_inquiry"
     
@@ -305,7 +332,24 @@ class SalesAgent(BaseAgent):
             return result
         
         else:
-            # General inquiry - provide helpful response with Indian context
+            # General inquiry - use Gemini for intelligent response if available
+            if self.use_gemini and self.gemini_client:
+                try:
+                    gemini_response = await self.gemini_client.generate_conversation_response(
+                        message=message,
+                        conversation_history=session.messages,
+                        customer_context=customer,
+                        agent_type="sales"
+                    )
+                    return {
+                        "message": gemini_response,
+                        "suggested_actions": self._get_indian_suggested_actions_from_customer(customer)
+                    }
+                except Exception as e:
+                    print(f"Gemini response generation error: {e}")
+                    # Fall through to default
+            
+            # Fallback response
             return {
                 "message": f"Namaste! I'd be happy to help you, {customer['name'].split()[0]}! I can assist you with product recommendations, inventory checks, pricing, and purchases. What would you like to know?",
                 "suggested_actions": self._get_indian_suggested_actions_from_customer(customer)

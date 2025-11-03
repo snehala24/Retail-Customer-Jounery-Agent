@@ -211,7 +211,6 @@ def generate_synthetic_customers(count: int = 100) -> List[Customer]:
             age = random.randint(22, 60)
         
         # Generate purchase history based on tier and occupation
-        purchase_history = []
         if tier in [CustomerTier.GOLD, CustomerTier.PLATINUM]:
             num_purchases = random.randint(20, 40)
         elif tier == CustomerTier.SILVER:
@@ -221,6 +220,15 @@ def generate_synthetic_customers(count: int = 100) -> List[Customer]:
         
         # Generate categories based on Indian preferences and occupation
         categories = generate_indian_purchase_patterns(tier, occupation)
+        
+        # Generate actual purchase history with product SKUs (sample from Indian products)
+        from data.mock_services import PRODUCTS
+        purchase_history = []
+        for _ in range(num_purchases):
+            category_products = [p for p in PRODUCTS if p.category in categories]
+            if category_products:
+                selected_product = random.choice(category_products)
+                purchase_history.append(selected_product.sku)
         
         # Generate preferences
         preferences = generate_indian_preferences(categories)

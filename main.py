@@ -774,6 +774,18 @@ async def get_demo_interface():
         <div class="sidebar">
             <h2 style="margin-bottom: 20px; color: #1f2937; font-size: 18px;">Indian Customers</h2>
             
+            <div class="channel-selector">
+                <label for="channel">Current Channel:</label>
+                <select id="channel">
+                    <option value="web">Web Chat</option>
+                    <option value="mobile">Mobile App</option>
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="telegram">Telegram</option>
+                    <option value="in_store_kiosk">In-Store Kiosk</option>
+                    <option value="voice_assistant">Voice Assistant</option>
+                </select>
+            </div>
+            
             <div id="customers-list">
                 <!-- Customers will be loaded here -->
             </div>

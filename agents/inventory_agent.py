@@ -202,18 +202,23 @@ class InventoryAgent(BaseAgent):
         # Check online availability
         online_item = next((item for item in inventory_items if item.location == "online"), None)
         if online_item and (online_item.quantity - online_item.reserved) >= quantity:
+            # Free shipping over ₹500 in India
+            shipping_cost = 0 if quantity * 50 >= 500 else 99  # ₹99 for orders under ₹500
             options.append({
                 "type": "ship_to_home",
                 "location": "online",
                 "available": True,
                 "quantity": online_item.quantity - online_item.reserved,
-                "estimated_delivery": "2-3 business days",
-                "shipping_cost": 9.99 if quantity * 50 < 100 else 0,  # Free shipping over $100
+                "estimated_delivery": "3-5 business days",
+                "shipping_cost": shipping_cost,
                 "description": "Ship directly to your home"
             })
         
-        # Check store availability
-        store_items = [item for item in inventory_items if item.location.startswith("store_")]
+        # Check store availability (both store_ and mumbai_store, delhi_store, etc.)
+        store_items = [item for item in inventory_items if 
+                      (item.location.startswith("store_") or 
+                       item.location.endswith("_store") or
+                       item.location in ["mumbai_store", "delhi_store", "bangalore_store"])]
         for store_item in store_items:
             if (store_item.quantity - store_item.reserved) >= quantity:
                 store_name = self._get_store_name(store_item.location)
@@ -247,29 +252,37 @@ class InventoryAgent(BaseAgent):
         return options
     
     def _get_store_name(self, location: str) -> str:
-        """Get human-readable store name"""
+        """Get human-readable store name for Indian stores"""
         store_mapping = {
-            "store_001": "Downtown Store",
-            "store_002": "Mall Location",
-            "store_003": "Airport Store"
+            "mumbai_store": "Mumbai Store - Andheri",
+            "delhi_store": "Delhi Store - Connaught Place",
+            "bangalore_store": "Bangalore Store - MG Road",
+            "store_001": "Mumbai Store - Andheri",
+            "store_002": "Delhi Store - Connaught Place",
+            "store_003": "Bangalore Store - MG Road"
         }
         return store_mapping.get(location, location.replace("_", " ").title())
     
     def _calculate_distance(self, customer_location: Optional[str], store_location: str) -> float:
-        """Calculate distance from customer to store (mock)"""
+        """Calculate distance from customer to store in km (India)"""
         if not customer_location:
-            return 5.0  # Default distance
+            return 5.0  # Default distance in km
         
-        # Mock distance calculation
+        # Extract city from location string (format: "City, State")
+        customer_city = customer_location.split(",")[0].strip() if "," in customer_location else customer_location
+        
+        # Mock distance calculation for Indian cities (in km)
         distance_mapping = {
-            "New York, NY": {"store_001": 2.1, "store_002": 4.5},
-            "Los Angeles, CA": {"store_001": 3.2, "store_002": 1.8},
-            "Miami, FL": {"store_001": 1.5, "store_002": 6.2},
-            "Seattle, WA": {"store_001": 4.1, "store_002": 2.8},
-            "Beverly Hills, CA": {"store_001": 0.8, "store_002": 3.4}
+            "Mumbai": {"mumbai_store": 2.5, "delhi_store": 1400, "bangalore_store": 850},
+            "Delhi": {"mumbai_store": 1400, "delhi_store": 3.2, "bangalore_store": 2170},
+            "Bangalore": {"mumbai_store": 850, "delhi_store": 2170, "bangalore_store": 4.1},
+            "Mumbai, Maharashtra": {"mumbai_store": 2.5, "delhi_store": 1400, "bangalore_store": 850},
+            "Delhi, Delhi": {"mumbai_store": 1400, "delhi_store": 3.2, "bangalore_store": 2170},
+            "Bangalore, Karnataka": {"mumbai_store": 850, "delhi_store": 2170, "bangalore_store": 4.1}
         }
         
-        return distance_mapping.get(customer_location, {}).get(store_location, 5.0)
+        return distance_mapping.get(customer_location, {}).get(store_location, 
+                distance_mapping.get(customer_city, {}).get(store_location, 5.0))
     
     def _get_recommended_fulfillment_option(self, fulfillment_options: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Get recommended fulfillment option"""

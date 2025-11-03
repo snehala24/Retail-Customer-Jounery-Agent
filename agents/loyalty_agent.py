@@ -80,7 +80,7 @@ class LoyaltyAgent(BaseAgent):
                 "discount_amount": promotion_result["discount_amount"],
                 "final_amount": purchase_amount - promotion_result["discount_amount"],
                 "savings_percentage": promotion_result["discount_percentage"],
-                "message": f"Promotion '{promotion_code}' applied! You saved ${promotion_result['discount_amount']:.2f}"
+                "message": f"Promotion '{promotion_code}' applied! You saved ₹{promotion_result['discount_amount']:,.2f}"
             }
         else:
             return {
@@ -144,7 +144,7 @@ class LoyaltyAgent(BaseAgent):
             "points_redeemed": points_to_redeem,
             "discount_amount": discount_amount,
             "new_balance": new_balance,
-            "message": f"Successfully redeemed {points_to_redeem} points for ${discount_amount:.2f} discount!"
+            "message": f"Successfully redeemed {points_to_redeem} points for ₹{discount_amount:,.2f} discount!"
         }
     
     async def _get_tier_benefits(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -304,7 +304,7 @@ class LoyaltyAgent(BaseAgent):
         
         # Check minimum amount
         if promotion.get("min_amount") and amount < promotion["min_amount"]:
-            return {"valid": False, "error": f"Minimum purchase of ${promotion['min_amount']} required"}
+            return {"valid": False, "error": f"Minimum purchase of ₹{promotion['min_amount']:,.2f} required"}
         
         # Check tier requirement
         if promotion.get("tier_required") and customer.get("tier") != promotion["tier_required"]:
@@ -410,8 +410,8 @@ class LoyaltyAgent(BaseAgent):
             benefits_list.append("priority customer support")
         if tier_benefits["free_shipping_threshold"] == 0:
             benefits_list.append("free shipping on all orders")
-        elif tier_benefits["free_shipping_threshold"] < 100:
-            benefits_list.append(f"free shipping on orders over ${tier_benefits['free_shipping_threshold']}")
+        elif tier_benefits["free_shipping_threshold"] < 500:
+            benefits_list.append(f"free shipping on orders over ₹{tier_benefits['free_shipping_threshold']}")
         
         benefits_text = ", ".join(benefits_list)
         

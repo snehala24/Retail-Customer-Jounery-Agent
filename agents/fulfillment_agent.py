@@ -67,8 +67,8 @@ class FulfillmentAgent(BaseAgent):
         # Generate shipping details
         shipping_details = {
             "tracking_number": tracking_number,
-            "carrier": "FedEx",
-            "service_type": "Standard Ground",
+            "carrier": "Blue Dart",
+            "service_type": "Standard Delivery",
             "pickup_date": pickup_date.isoformat(),
             "estimated_delivery": delivery_date.isoformat(),
             "shipping_time_days": shipping_time,
@@ -231,20 +231,33 @@ class FulfillmentAgent(BaseAgent):
         }
     
     def _calculate_shipping_time(self, customer_location: Optional[str]) -> int:
-        """Calculate shipping time based on location"""
+        """Calculate shipping time based on location (India)"""
         if not customer_location:
-            return 3  # Default 3 days
+            return 5  # Default 5 days for India
         
-        # Mock shipping time calculation
+        # Extract city from location string
+        customer_city = customer_location.split(",")[0].strip() if "," in customer_location else customer_location
+        
+        # Mock shipping time calculation for Indian cities (in days)
         location_times = {
-            "New York, NY": 1,
-            "Los Angeles, CA": 2,
-            "Miami, FL": 3,
-            "Seattle, WA": 4,
-            "Beverly Hills, CA": 1
+            "Mumbai": 3,
+            "Delhi": 4,
+            "Bangalore": 5,
+            "Chennai": 4,
+            "Kolkata": 5,
+            "Hyderabad": 4,
+            "Pune": 3,
+            "Ahmedabad": 4,
+            "Jaipur": 5,
+            "Surat": 4,
+            "Mumbai, Maharashtra": 3,
+            "Delhi, Delhi": 4,
+            "Bangalore, Karnataka": 5,
+            "Chennai, Tamil Nadu": 4,
+            "Kolkata, West Bengal": 5
         }
         
-        return location_times.get(customer_location, 3)
+        return location_times.get(customer_location, location_times.get(customer_city, 5))
     
     def _calculate_preparation_time(self, items: List[Dict[str, Any]]) -> int:
         """Calculate store preparation time"""
@@ -258,21 +271,22 @@ class FulfillmentAgent(BaseAgent):
         return int(base_time + additional_time)
     
     def _calculate_shipping_cost(self, items: List[Dict[str, Any]], customer_location: Optional[str]) -> float:
-        """Calculate shipping cost"""
+        """Calculate shipping cost (India - in rupees)"""
         total_value = sum(item.get("price", 0) * item.get("quantity", 1) for item in items)
         
-        # Free shipping over $100
-        if total_value >= 100:
+        # Free shipping over ₹500 in India
+        if total_value >= 500:
             return 0.0
         
-        # Base shipping cost
-        return 9.99
+        # Base shipping cost in rupees
+        return 99.0
     
     def _get_store_pickup_options(self, customer_location: Optional[str]) -> List[Dict[str, Any]]:
-        """Get store pickup options"""
+        """Get store pickup options (India)"""
         stores = [
-            {"id": "store_001", "name": "Downtown Store", "distance": 2.1},
-            {"id": "store_002", "name": "Mall Location", "distance": 4.5}
+            {"id": "mumbai_store", "name": "Mumbai Store - Andheri", "distance": 2.5},
+            {"id": "delhi_store", "name": "Delhi Store - Connaught Place", "distance": 3.2},
+            {"id": "bangalore_store", "name": "Bangalore Store - MG Road", "distance": 4.1}
         ]
         
         options = []
@@ -282,8 +296,8 @@ class FulfillmentAgent(BaseAgent):
                 "description": f"Pick up at {store['name']}",
                 "store_id": store["id"],
                 "store_name": store["name"],
-                "distance": f"{store['distance']} miles",
-                "estimated_ready": "1-2 hours",
+                "distance": f"{store['distance']} km",
+                "estimated_ready": "2-3 hours",
                 "cost": 0.0,
                 "available": True
             })
@@ -304,20 +318,26 @@ class FulfillmentAgent(BaseAgent):
         return options[0]
     
     def _get_store_name(self, store_location: str) -> str:
-        """Get store name from location"""
+        """Get store name from location (India)"""
         store_names = {
-            "store_001": "Downtown Store",
-            "store_002": "Mall Location",
-            "store_003": "Airport Store"
+            "mumbai_store": "Mumbai Store - Andheri",
+            "delhi_store": "Delhi Store - Connaught Place",
+            "bangalore_store": "Bangalore Store - MG Road",
+            "store_001": "Mumbai Store - Andheri",
+            "store_002": "Delhi Store - Connaught Place",
+            "store_003": "Bangalore Store - MG Road"
         }
-        return store_names.get(store_location, store_location)
+        return store_names.get(store_location, store_location.replace("_", " ").title())
     
     def _get_store_address(self, store_location: str) -> str:
-        """Get store address from location"""
+        """Get store address from location (India)"""
         store_addresses = {
-            "store_001": "123 Main St, Downtown",
-            "store_002": "456 Mall Dr, Shopping Center",
-            "store_003": "789 Airport Blvd, Terminal 2"
+            "mumbai_store": "123 Andheri West, Mumbai, Maharashtra 400053",
+            "delhi_store": "45 Connaught Place, New Delhi, Delhi 110001",
+            "bangalore_store": "78 MG Road, Bangalore, Karnataka 560001",
+            "store_001": "123 Andheri West, Mumbai, Maharashtra 400053",
+            "store_002": "45 Connaught Place, New Delhi, Delhi 110001",
+            "store_003": "78 MG Road, Bangalore, Karnataka 560001"
         }
         return store_addresses.get(store_location, "Store Address")
     
@@ -395,7 +415,7 @@ class FulfillmentAgent(BaseAgent):
         tracking = shipping_details["tracking_number"]
         delivery_date = shipping_details["estimated_delivery"][:10]  # Date only
         
-        return f"Great news {name}! Your order has been scheduled for shipping. Tracking number: {tracking}. Estimated delivery: {delivery_date}. You'll receive updates as your package moves through our network."
+        return f"Great news {name}! Your order has been scheduled for shipping. Tracking number: {tracking}. Estimated delivery: {delivery_date}. You'll receive SMS updates as your package moves through our delivery network."
     
     def _generate_click_collect_message(self, store_details: Dict[str, Any], customer: Dict[str, Any]) -> str:
         """Generate click and collect confirmation message"""

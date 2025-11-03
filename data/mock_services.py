@@ -259,6 +259,9 @@ INDIAN_PROMOTIONS = {
     }
 }
 
+# Export for use in agents
+PROMOTIONS = INDIAN_PROMOTIONS
+
 class MockProductService:
     def __init__(self):
         self.products = PRODUCTS
@@ -325,6 +328,13 @@ class MockInventoryService:
                 }
         return {"available": False, "quantity_available": 0, "quantity_requested": quantity, "location": location}
     
+    def check_inventory(self, sku: str, location: str = None) -> List[InventoryItem]:
+        """Get inventory for a product"""
+        if location:
+            return [item for item in self.inventory if item.sku == sku and item.location == location]
+        else:
+            return [item for item in self.inventory if item.sku == sku]
+    
     def reserve_inventory(self, sku: str, quantity: int, location: str = "online") -> bool:
         """Reserve inventory for order"""
         for item in self.inventory:
@@ -334,6 +344,10 @@ class MockInventoryService:
                     return True
         return False
     
+    def reserve_item(self, sku: str, location: str, quantity: int) -> bool:
+        """Reserve inventory item (alias for reserve_inventory)"""
+        return self.reserve_inventory(sku, quantity, location)
+    
     def release_inventory(self, sku: str, quantity: int, location: str = "online") -> bool:
         """Release reserved inventory"""
         for item in self.inventory:
@@ -342,6 +356,10 @@ class MockInventoryService:
                     item.reserved -= quantity
                     return True
         return False
+    
+    def release_reservation(self, sku: str, location: str, quantity: int) -> bool:
+        """Release reserved inventory (alias for release_inventory)"""
+        return self.release_inventory(sku, quantity, location)
 
 class MockPaymentService:
     def __init__(self):

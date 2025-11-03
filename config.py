@@ -4,7 +4,7 @@ from pydantic import BaseSettings
 
 class Settings(BaseSettings):
     # API Keys
-    openai_api_key: str = ""
+    gemini_api_key: str = ""
     
     # Database
     database_url: str = "sqlite:///./sales_agent.db"
@@ -26,5 +26,6 @@ class Settings(BaseSettings):
     
     class Config:
         env_file = ".env"
+        case_sensitive = False
 
 settings = Settings()
