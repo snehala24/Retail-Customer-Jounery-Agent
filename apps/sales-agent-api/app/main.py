@@ -1,17 +1,14 @@
-# app/main.py
 import os, logging, asyncio
 from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from app.services import telegram_bot
 
 load_dotenv()
 
-
 from app.services.session_store import create_session_store
-
-
 
 # ✅ Load .env safely no matter where Uvicorn is launched from
 env_path = Path(__file__).resolve().parents[4] / ".env"
@@ -24,14 +21,17 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(na
 # ✅ FastAPI app instance
 app = FastAPI(title="Sales Agent (Conductor)", version="0.2.1")
 
+
 # ✅ CORS (for React/Telegram frontends)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # For now allow all origins (safe for development)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(telegram_bot.router)
 
 # ----- Models -----
 class ChatRequest(BaseModel):
@@ -45,15 +45,20 @@ class ChatResponse(BaseModel):
     reply: str
     actions: dict | None = None
 
-
 # ----- Global State -----
-session_store = None
-
+session_store = None  # Global variable to store session store instance
 
 # ----- Routes -----
 @app.get("/healthz")
 async def healthz():
     return {"status": "ok"}
+@app.get("/v1/metrics/{tool_name}")
+async def get_tool_metrics(tool_name: str):
+    """View performance metrics for a specific tool."""
+    from app.services.metrics_tracker import metrics_tracker
+    await metrics_tracker.init()
+    metrics = await metrics_tracker.get_metrics(tool_name)
+    return metrics or {"message": f"No metrics yet for tool '{tool_name}'"}
 
 
 @app.post("/v1/chat", response_model=ChatResponse)
@@ -69,6 +74,10 @@ async def chat(req: ChatRequest, request: Request):
 
     global session_store
 
+    # Ensure session store is initialized before accessing it
+    if session_store is None:
+        session_store = await create_session_store()  # Ensure Redis connection is established
+
     session_id = req.session_id or f"sid-{os.urandom(6).hex()}"
     session = await session_store.get(session_id) or {"messages": [], "customer_id": req.customer_id}
 
@@ -82,13 +91,12 @@ async def chat(req: ChatRequest, request: Request):
     reply_text = plan.get("reply_text", "")
     tool_calls = plan.get("tool_calls", [])
 
-    # 3️⃣ Execute tool calls (mock for now)
-    results = []
-    for call in tool_calls:
-        tool_name = call.get("tool")
-        args = call.get("args", {})
-        result = await tool_router.execute_tool_call(tool_name, args)
-        results.append({"tool": tool_name, "result": result})
+    # 3️⃣ Execute tool calls via orchestrator
+    from app.services.orchestrator import execute_plan
+    orchestration_result = await execute_plan({"reply_text": reply_text, "tool_calls": tool_calls}, session_id, session)
+    results = orchestration_result.get("tool_results", [])
+    # optionally update reply_text from orchestrator.plan reply (same as we already have)
+    reply_text = orchestration_result.get("reply_text", reply_text)
 
     # 4️⃣ Append assistant message
     session["messages"].append({
@@ -107,15 +115,13 @@ async def chat(req: ChatRequest, request: Request):
         actions={"tool_results": results} if results else None
     )
 
-
 # ----- Lifecycle -----
 @app.on_event("startup")
 async def startup_event():
     global session_store
     logger.info("🚀 Starting Sales Agent API (connecting to Redis)...")
-    session_store = await create_session_store()
+    session_store = await create_session_store()  # Initialize session_store at startup
     logger.info("✅ Redis session store initialized successfully")
-
 
 @app.on_event("shutdown")
 async def shutdown_event():

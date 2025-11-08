@@ -1,27 +1,41 @@
 # app/services/tool_router.py
-from typing import Dict, Any
+
 import logging
-from app.services.recommend_service import recommend_products
+from app.agents import recommendation_agent, inventory_agent, payment_agent
 
 logger = logging.getLogger("tool_router")
 
-async def execute_tool_call(tool_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
+# Define mapping of tool name → function
+TOOL_MAP = {
+    "recommend": recommendation_agent.recommend_products_sync,
+    "check_stock": inventory_agent.check_stock_sync,
+    "authorize_payment": payment_agent.authorize_payment_sync
+}
+
+async def execute(tool_name: str, args: dict):
     """
-    Dispatches tool calls to actual services.
+    Executes a given tool asynchronously.
     """
-    logger.info(f"🛠️ Executing tool: {tool_name} | Args: {args}")
+    if tool_name not in TOOL_MAP:
+        logger.warning(f"⚠️ Unknown tool requested: {tool_name}")
+        raise ValueError(f"Unknown tool: {tool_name}")
 
-    # 🧠 1️⃣ Real-time product recommendation
-    if tool_name == "recommend":
-        query = args.get("query", "")
-        budget = args.get("budget", 5000)
-        return recommend_products(query, budget)
+    tool_func = TOOL_MAP[tool_name]
+    logger.info(f"🔧 Executing tool '{tool_name}' with args: {args}")
 
-    # 🧠 2️⃣ Mock tools (optional)
-    if tool_name == "check_stock":
-        return {"sku": args.get("sku"), "stores": [{"store_id":"STORE-MYLAI","qty":12}], "ship_eta_days": 2}
-    
-    if tool_name == "authorize_payment":
-        return {"status": "authorized", "auth_code": "AUTH-0001"}
+    try:
+        # Run tool (even if it’s sync)
+        result = await _run_async(tool_func, **args)
+        logger.info(f"✅ Tool '{tool_name}' completed successfully")
+        return result
+    except Exception as e:
+        logger.error(f"❌ Tool '{tool_name}' failed: {e}")
+        raise
 
-    return {"ok": True, "tool": tool_name, "args": args}
+async def _run_async(func, **kwargs):
+    """
+    Helper to run sync functions asynchronously (thread offload).
+    """
+    import asyncio
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, lambda: func(**kwargs))
