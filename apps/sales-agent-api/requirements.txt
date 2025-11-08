@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+httpx
+pydantic
+python-dotenv
+aioredis
+python-jose
+opentelemetry-api==1.22.0
+opentelemetry-sdk==1.22.0
+sqlalchemy
+psycopg2-binary
+
