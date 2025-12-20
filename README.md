@@ -67,14 +67,6 @@ agentic-sales/
 
 ---
 
-## Important corrections you raised
-
-1. **Backend file structure** — corrected above to match your project.
-2. **Docker is required** — Redis and Postgres are run using Docker (docker-compose). Docker is **not optional** for a typical local dev setup here (because tests and the app rely on Redis/Postgres).
-3. **API keys and secrets** — NEVER commit keys to git. Use a `.env` file referenced by `docker-compose.yml` or environment variables. If you hardcoded keys locally for testing, remove them and rotate the keys.
-
----
-
 ## Tech stack
 
 - Backend: Python 3.10+, FastAPI, httpx, aioredis (or redis client), SQLAlchemy / Alembic
@@ -155,7 +147,6 @@ docker compose up --build
 
 ## Local dev (without Docker) — not recommended for full stack
 
-You *can* run backend locally, but you need Redis and Postgres running. If you don't have Docker, install Postgres and Redis locally and update `.env` accordingly.
 
 Typical steps (when using Docker recommended above):
 
@@ -235,15 +226,6 @@ Invoke-WebRequest -Uri "https://api.telegram.org/bot<YOUR_TOKEN>/setWebhook" `
 
 ---
 
-## Security & best practices
-
-- **Never** commit secrets. Use `.env` + `.gitignore`.
-- Rotate any keys that were accidentally committed.
-- Use Docker secrets or a secrets manager in production.
-- Avoid hardcoding API keys in `llm_client.py` and similar files. Use `os.getenv("GEMINI_API_KEY")`.
-
----
-
 ## Troubleshooting (common issues)
 
 - **Tailwind / PostCSS errors**: Install `@tailwindcss/postcss` and ensure `postcss.config.cjs` uses CommonJS when `type: "module"` is set.
@@ -261,17 +243,3 @@ Run tests from repo root (ensure services are available):
 # activate venv or use docker compose test setup
 pytest -q
 ```
-
----
-
-## Final notes
-
-- I removed any hard-coded API keys from this README. If you have test keys you used during local debugging, **delete them** from source and add to `.env` instead.
-- If you'd like, I can:
-  - regenerate a polished README file with screenshots and the exact commands tailored to your folder paths and provide a downloadable copy,
-  - produce a `start.ps1` script that launches backend + frontend and prints the cloudflared URL (if installed),
-  - or create a checklist for Phase 8.
-
----
-
-**Would you like me to save this updated README into your workspace now as `README.md` so you can download it?**
