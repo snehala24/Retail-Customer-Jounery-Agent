@@ -1,11 +1,6 @@
 
-# Agentic Sales (Agentic AI) — Project README
+# Agentic Sales (Agentic AI) 
 
-**Status:** Updated — see notes below.  
-**Author:** Team / Sneha  
-**Important:** DO NOT commit API keys or secrets to the repository. Use a `.env` file or Docker secrets.
-
----
 
 ## Project overview
 
